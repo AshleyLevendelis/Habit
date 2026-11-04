@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { Difficulty, Frequency, Habit, TimeOfDay } from '../types'
 import { WEEKDAY_LABELS } from '../lib/dates'
+import { formatEnd, parseTime, timeOfDayFor } from '../lib/time'
+
+const DURATIONS = [5, 10, 15, 30, 45, 60, 90]
 
 const EMOJIS = ['🌅', '🏋️', '🥊', '🍳', '🥗', '🏠', '📚', '🧘', '💧', '🛏️', '🚫', '💼', '🧹', '💊', '🚶', '🧠', '💰', '✍️']
 
@@ -21,6 +24,8 @@ export function HabitForm({ initial, onSave, onCancel }: Props) {
   )
   const [target, setTarget] = useState(initial?.frequency.type === 'perWeek' ? initial.frequency.target : 3)
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(initial?.timeOfDay ?? 'anytime')
+  const [startTime, setStartTime] = useState(initial?.startTime ?? '')
+  const [duration, setDuration] = useState<number | ''>(initial?.durationMin ?? '')
   const [difficulty, setDifficulty] = useState<Difficulty>(initial?.difficulty ?? 'medium')
 
   const valid = name.trim().length > 0 && (freqType !== 'weekdays' || days.length > 0)
@@ -38,7 +43,9 @@ export function HabitForm({ initial, onSave, onCancel }: Props) {
       why: why.trim() || undefined,
       cue: cue.trim() || undefined,
       frequency,
-      timeOfDay,
+      timeOfDay: parseTime(startTime) !== null ? timeOfDayFor(startTime) : timeOfDay,
+      startTime: parseTime(startTime) !== null ? startTime : undefined,
+      durationMin: duration ? Math.min(1440, Math.max(1, Math.round(duration))) : undefined,
       difficulty,
       archived: initial?.archived,
     })
@@ -105,6 +112,40 @@ export function HabitForm({ initial, onSave, onCancel }: Props) {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="field">
+          <label>Start time (optional)</label>
+          <div className="row" style={{ gap: 8 }}>
+            <input className="input" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={{ flex: 1 }} />
+            {startTime && <button className="btn" onClick={() => setStartTime('')}>Clear</button>}
+          </div>
+          {startTime && <div className="muted small">Placed in {timeOfDayFor(startTime)} on Today.</div>}
+        </div>
+
+        <div className="field">
+          <label>Duration (optional)</label>
+          <div className="seg">
+            {DURATIONS.map((m) => (
+              <button key={m} className={duration === m ? 'on' : ''} onClick={() => setDuration(duration === m ? '' : m)}>
+                {m < 60 ? `${m} min` : m === 60 ? '1 hr' : '1.5 hr'}
+              </button>
+            ))}
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 6 }}>
+            <input
+              className="input"
+              type="number"
+              min={1}
+              max={1440}
+              inputMode="numeric"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Custom minutes"
+              style={{ flex: 1 }}
+            />
+          </div>
+          {startTime && duration ? <div className="muted small">Ends around {formatEnd(startTime, Number(duration))}.</div> : null}
         </div>
 
         <div className="field">

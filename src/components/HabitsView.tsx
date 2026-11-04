@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { scheduleLabel } from '../lib/time'
 import type { AppState, Habit } from '../types'
 import type { Action } from '../store'
 import { WEEKDAY_NAMES } from '../lib/dates'
@@ -54,7 +55,7 @@ export function HabitsView({ state, dispatch }: Props) {
             <div className="emoji">{h.emoji}</div>
             <div>
               <b>{h.name}</b>
-              <div className="muted small">{describe(h)} · {h.timeOfDay} · {h.difficulty}</div>
+              <div className="muted small">{describe(h)} · {scheduleLabel(h.startTime, h.durationMin) || h.timeOfDay} · {h.difficulty}</div>
             </div>
             <div className="row" style={{ gap: 6 }}>
               <button className="icon-btn" onClick={() => move(h, -1)} disabled={i === 0} aria-label="Move up">↑</button>

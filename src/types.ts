@@ -17,6 +17,10 @@ export interface Habit {
   cue?: string
   frequency: Frequency
   timeOfDay: TimeOfDay
+  /** Optional scheduled start, "HH:MM" (24h). */
+  startTime?: string
+  /** Optional planned duration in minutes. */
+  durationMin?: number
   difficulty: Difficulty
   createdAt: string // YYYY-MM-DD
   archived?: boolean

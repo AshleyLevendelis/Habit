@@ -3,6 +3,7 @@ import type { AppState, Habit, TimeOfDay } from '../types'
 import type { Action } from '../store'
 import { coachLine, dayScore, dueStatus, levelInfo, totals } from '../lib/engine'
 import { addDays, formatLong, todayKey } from '../lib/dates'
+import { parseTime } from '../lib/time'
 import { ProgressRing } from './ProgressRing'
 import { HabitCard } from './HabitCard'
 
@@ -15,6 +16,16 @@ interface Props {
 const ORDER: TimeOfDay[] = ['morning', 'afternoon', 'evening', 'anytime']
 const LABEL: Record<TimeOfDay, string> = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening', anytime: 'Anytime' }
 
+/** Timed habits first in chronological order; untimed keep their list order (stable sort). */
+function byStart(a: Habit, b: Habit): number {
+  const x = parseTime(a.startTime)
+  const y = parseTime(b.startTime)
+  if (x === null && y === null) return 0
+  if (x === null) return 1
+  if (y === null) return -1
+  return x - y
+}
+
 export function TodayView({ state, dispatch, onToast }: Props) {
   const today = todayKey()
   const [day, setDay] = useState(today)
@@ -26,7 +37,7 @@ export function TodayView({ state, dispatch, onToast }: Props) {
   const visible = state.habits.filter(
     (h) => !h.archived && day >= h.createdAt && (h.frequency.type === 'perWeek' || dueStatus(state, h, day) !== 'off'),
   )
-  const groups = ORDER.map((tod) => ({ tod, habits: visible.filter((h) => h.timeOfDay === tod) })).filter((g) => g.habits.length)
+  const groups = ORDER.map((tod) => ({ tod, habits: visible.filter((h) => h.timeOfDay === tod).sort(byStart) })).filter((g) => g.habits.length)
 
   function toggle(h: Habit) {
     const wasDone = dueStatus(state, h, day) === 'done'

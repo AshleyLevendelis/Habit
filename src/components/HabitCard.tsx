@@ -1,6 +1,7 @@
 import type { AppState, Habit } from '../types'
 import { dueStatus, isCompleted, streak, weekCount, XP_BY_DIFFICULTY } from '../lib/engine'
 import { range, weekEnd, weekStart } from '../lib/dates'
+import { scheduleLabel } from '../lib/time'
 
 interface Props {
   state: AppState
@@ -14,6 +15,8 @@ export function HabitCard({ state, habit, day, onToggle }: Props) {
   const done = status === 'done'
   const st = streak(state, habit, day)
   const risk = !done && st.atRisk
+
+  const schedule = scheduleLabel(habit.startTime, habit.durationMin)
 
   let freq: React.ReactNode = null
   if (habit.frequency.type === 'perWeek') {
@@ -40,6 +43,7 @@ export function HabitCard({ state, habit, day, onToggle }: Props) {
       <div>
         <div className="name">{habit.name}</div>
         <div className="meta">
+          {schedule && <span className="pill">⏰ {schedule}</span>}
           {st.current > 0 && (
             <span className={`pill ${st.current >= 7 ? 'hot' : ''}`}>
               🔥 {st.current} {st.unit === 'week' ? 'wk' : 'day'}
