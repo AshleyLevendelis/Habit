@@ -16,7 +16,7 @@ function habit(partial: Partial<Habit>): Habit {
 }
 
 function state(habits: Habit[], done: Record<string, string[]>): AppState {
-  return { version: 1, habits, completions: done, notes: {}, settings: { name: '', reminderTime: '' } }
+  return { version: 1, habits, completions: done, logs: {}, skips: {}, notes: {}, settings: { name: '', reminderTime: '', habitReminders: false, lastBackup: '' } }
 }
 
 describe('daily streaks with "never miss twice"', () => {

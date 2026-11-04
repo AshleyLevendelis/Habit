@@ -108,15 +108,15 @@ export function HabitsView({ state, dispatch }: Props) {
             setEditing(null)
           }}
           onCancel={() => setEditing(null)}
+          onArchive={() => {
+            dispatch({ type: 'archiveHabit', habitId: editing.id, archived: true })
+            setEditing(null)
+          }}
+          onDelete={() => {
+            remove(editing)
+            setEditing(null)
+          }}
         />
-      )}
-      {editing && (
-        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 21, pointerEvents: 'none' }}>
-          <div style={{ maxWidth: 560, margin: '0 auto', padding: '0 16px 12px', pointerEvents: 'auto', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button className="btn sm" onClick={() => { dispatch({ type: 'archiveHabit', habitId: editing.id, archived: true }); setEditing(null) }}>Archive</button>
-            <button className="btn sm danger" onClick={() => { remove(editing); setEditing(null) }}>Delete</button>
-          </div>
-        </div>
       )}
     </div>
   )

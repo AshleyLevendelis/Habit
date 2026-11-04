@@ -1,4 +1,4 @@
-import type { AppState, Habit } from '../types'
+import type { AppState, Habit, Settings } from '../types'
 import { todayKey } from './dates'
 
 const KEY = 'habit-app-state-v1'
@@ -62,13 +62,32 @@ export function seedHabits(): Habit[] {
   ]
 }
 
+export function defaultSettings(): Settings {
+  return { name: '', reminderTime: '', habitReminders: false, lastBackup: '' }
+}
+
 export function initialState(): AppState {
   return {
     version: 1,
     habits: seedHabits(),
     completions: {},
+    logs: {},
+    skips: {},
     notes: {},
-    settings: { name: '', reminderTime: '' },
+    settings: defaultSettings(),
+  }
+}
+
+/** Fill in anything an older save is missing so the rest of the app can rely on it. */
+export function normalize(parsed: Partial<AppState>): AppState {
+  return {
+    version: 1,
+    habits: parsed.habits ?? [],
+    completions: parsed.completions ?? {},
+    logs: parsed.logs ?? {},
+    skips: parsed.skips ?? {},
+    notes: parsed.notes ?? {},
+    settings: { ...defaultSettings(), ...(parsed.settings ?? {}) },
   }
 }
 
@@ -78,13 +97,7 @@ export function load(): AppState {
     if (!raw) return initialState()
     const parsed = JSON.parse(raw) as Partial<AppState>
     if (parsed.version !== 1 || !Array.isArray(parsed.habits)) return initialState()
-    return {
-      version: 1,
-      habits: parsed.habits,
-      completions: parsed.completions ?? {},
-      notes: parsed.notes ?? {},
-      settings: { name: '', reminderTime: '', ...(parsed.settings ?? {}) },
-    }
+    return normalize(parsed)
   } catch {
     return initialState()
   }
@@ -105,11 +118,5 @@ export function exportJson(state: AppState): string {
 export function importJson(text: string): AppState {
   const parsed = JSON.parse(text) as Partial<AppState>
   if (parsed.version !== 1 || !Array.isArray(parsed.habits)) throw new Error('Not a valid backup file')
-  return {
-    version: 1,
-    habits: parsed.habits,
-    completions: parsed.completions ?? {},
-    notes: parsed.notes ?? {},
-    settings: { name: '', reminderTime: '', ...(parsed.settings ?? {}) },
-  }
+  return normalize(parsed)
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AppState, Habit, TimeOfDay } from '../types'
 import type { Action } from '../store'
 import { coachLine, dayScore, dueStatus, levelInfo, totals } from '../lib/engine'
@@ -6,11 +6,15 @@ import { addDays, formatLong, todayKey } from '../lib/dates'
 import { parseTime } from '../lib/time'
 import { ProgressRing } from './ProgressRing'
 import { HabitCard } from './HabitCard'
+import { Timeline } from './Timeline'
+import type { ActiveTimer } from '../lib/timer'
 
 interface Props {
   state: AppState
   dispatch: (a: Action) => void
   onToast: (msg: string) => void
+  timer: ActiveTimer | null
+  onStartTimer: (h: Habit, day: string) => void
 }
 
 const ORDER: TimeOfDay[] = ['morning', 'afternoon', 'evening', 'anytime']
@@ -26,9 +30,38 @@ function byStart(a: Habit, b: Habit): number {
   return x - y
 }
 
-export function TodayView({ state, dispatch, onToast }: Props) {
+type Mode = 'list' | 'timeline'
+
+function nowHHMM(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function loadMode(): Mode {
+  try {
+    return localStorage.getItem('habit-today-mode') === 'timeline' ? 'timeline' : 'list'
+  } catch {
+    return 'list'
+  }
+}
+
+export function TodayView({ state, dispatch, onToast, timer, onStartTimer }: Props) {
   const today = todayKey()
   const [day, setDay] = useState(today)
+  const [mode, setMode] = useState<Mode>(loadMode)
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+  function pickMode(m: Mode) {
+    setMode(m)
+    try {
+      localStorage.setItem('habit-today-mode', m)
+    } catch {
+      /* ignore */
+    }
+  }
   const score = dayScore(state, day)
   const t = totals(state, today)
   const lvl = levelInfo(t.xp)
@@ -41,7 +74,9 @@ export function TodayView({ state, dispatch, onToast }: Props) {
 
   function toggle(h: Habit) {
     const wasDone = dueStatus(state, h, day) === 'done'
-    dispatch({ type: 'toggle', habitId: h.id, day })
+    // Remember when you actually did it (only meaningful for today, not backfill).
+    const log = !wasDone && isToday ? { at: nowHHMM() } : undefined
+    dispatch({ type: 'toggle', habitId: h.id, day, log })
     if (!wasDone) {
       const after = dayScore({ ...state, completions: { ...state.completions, [day]: [...(state.completions[day] ?? []), h.id] } }, day)
       if (after.perfect) onToast('🌟 Perfect day! +30 bonus XP')
@@ -74,18 +109,37 @@ export function TodayView({ state, dispatch, onToast }: Props) {
         </div>
       </div>
 
-      {groups.length === 0 && <div className="empty">Nothing scheduled. Add habits in the Habits tab.</div>}
+      <div className="seg" role="group" aria-label="Today layout" style={{ marginTop: 14 }}>
+        <button className={mode === 'list' ? 'on' : ''} aria-pressed={mode === 'list'} onClick={() => pickMode('list')}>List</button>
+        <button className={mode === 'timeline' ? 'on' : ''} aria-pressed={mode === 'timeline'} onClick={() => pickMode('timeline')}>Timeline</button>
+      </div>
 
-      {groups.map((g) => (
-        <div key={g.tod}>
-          <div className="section">{LABEL[g.tod]}</div>
-          <div className="stack">
-            {g.habits.map((h) => (
-              <HabitCard key={h.id} state={state} habit={h} day={day} onToggle={() => toggle(h)} />
-            ))}
+      {visible.length === 0 && <div className="empty">Nothing scheduled. Add habits in the Habits tab.</div>}
+
+      {mode === 'timeline' && visible.length > 0 && (
+        <Timeline state={state} habits={visible} day={day} isToday={isToday} now={now} onToggle={toggle} />
+      )}
+
+      {mode === 'list' &&
+        groups.map((g) => (
+          <div key={g.tod}>
+            <div className="section">{LABEL[g.tod]}</div>
+            <div className="stack">
+              {g.habits.map((h) => (
+                <HabitCard
+                  key={h.id}
+                  state={state}
+                  habit={h}
+                  day={day}
+                  onToggle={() => toggle(h)}
+                  onStartTimer={isToday ? () => onStartTimer(h, day) : undefined}
+                  timerRunning={timer?.habitId === h.id}
+                  onSkip={(skipped) => dispatch({ type: 'skip', habitId: h.id, day, skipped })}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
 
       <div className="section">End of day</div>
       <textarea

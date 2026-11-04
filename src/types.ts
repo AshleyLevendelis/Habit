@@ -31,14 +31,30 @@ export type Completions = Record<string, string[]>
 
 export interface Settings {
   name: string
-  reminderTime: string // "HH:MM" or ''
-  /** Journal lines per day, optional end-of-day reflection */
+  /** Daily check-in time, "HH:MM" or '' */
+  reminderTime: string
+  /** Notify at each habit's own start time. */
+  habitReminders: boolean
+  /** ISO timestamp of the last exported backup, or ''. */
+  lastBackup: string
+}
+
+/** What actually happened when a habit was completed (all optional). */
+export interface CompletionLog {
+  /** Local clock time it was ticked off, "HH:MM". Only recorded for today. */
+  at?: string
+  /** Minutes actually spent (from the timer). */
+  minutes?: number
 }
 
 export interface AppState {
   version: 1
   habits: Habit[]
   completions: Completions
+  /** dayKey -> habitId -> details of that completion */
+  logs: Record<string, Record<string, CompletionLog>>
+  /** dayKey -> habit ids on a rest day (skipped without breaking the streak) */
+  skips: Record<string, string[]>
   notes: Record<string, string> // dayKey -> reflection
   settings: Settings
 }
